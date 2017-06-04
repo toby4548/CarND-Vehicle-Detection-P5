@@ -1,33 +1,85 @@
-# Vehicle Detection
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
-
-In this project, your goal is to write a software pipeline to detect vehicles in a video (start with the test_video.mp4 and later implement on full project_video.mp4), but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
-
-Creating a great writeup:
----
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
-
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
-
-You can submit your writeup in markdown or use another method and submit a pdf instead.
-
-The Project
----
+# Vehicle Detection Project
 
 The goals / steps of this project are the following:
 
-* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
-* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
+* Perform  normalized Histogram of Oriented Gradients (HOG) feature and color feature extraction on a labeled training set of images and train and test a classifier Linear SVM classifier
+* Implement a sliding-window technique and use trained classifier to search for vehicles in images.
+* Run pipeline on a video stream and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
 * Estimate a bounding box for vehicles detected.
 
-Here are links to the labeled data for [vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/vehicles.zip) and [non-vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/non-vehicles.zip) examples to train your classifier.  These example images come from a combination of the [GTI vehicle image database](http://www.gti.ssr.upm.es/data/Vehicle_database.html), the [KITTI vision benchmark suite](http://www.cvlibs.net/datasets/kitti/), and examples extracted from the project video itself.   You are welcome and encouraged to take advantage of the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) to augment your training data.  
+[//]: # (Image References)
+[image1]: ./Writeup_Material/Data_Example.png
+[image2]: ./Writeup_Material/Car_YCrCb_Feature.png
+[image3]: ./Writeup_Material/Notcar_YCrCb_Feature.png
+[image4]: ./Writeup_Material/sliding_window.png
+[image5]: ./Writeup_Material/Heat_Map.png
+[image6]: ./examples/labels_map.png
+[image7]: ./examples/output_bboxes.png
+[video1]: ./project_video.mp4
 
-Some example images for testing your pipeline on single frames are located in the `test_images` folder.  To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `ouput_images`, and include them in your writeup for the project by describing what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
 
-**As an optional challenge** Once you have a working pipeline for vehicle detection, add in your lane-finding algorithm from the last project to do simultaneous lane-finding and vehicle detection!
+### Histogram of Oriented Gradients (HOG)
 
-**If you're feeling ambitious** (also totally optional though), don't stop there!  We encourage you to go out and take video of your own, and show us how you would implement this project on a new video!
+#### 1. Extracted HOG features from the training images
+
+The code for this step is contained in the second code cell of the IPython notebook. I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+
+![alt text][image1]
+
+
+#### 2. Final choice of HOG parameters
+
+
+I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  
+
+I tried various combinations of parameters and I end up using the `YCrCb` color space and HOG parameters of `orientations=12`, `pixels_per_cell=(16, 16)` and `cells_per_block=(2, 2)` because these parameters gives me best result.
+
+I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
+
+![alt text][image2]
+![alt text][image3]
+
+#### 3. Trained a classifier using both HOG features and color features
+
+I trained a linear SVM using the combination of color features and HOG features. I found out that HOG features is quite accurate, however, it has some problem with certain color. For example if I only use HOG feature, I have some problem with detecting the white car in the project video. I also use HOG color from all channels to train my classifier because this can get me higher test accuracy(from 95% to 99%).
+
+### Sliding Window Search
+
+#### 1. Sliding Window Search Parameter
+
+I search the region between y=[400,600] since this is the only region where cars shoud appear. I use window size 80x80 and overlap 50%, resize it to 64*64  and feed it to the classifier. By using a larger window, I got more accurate bounding box and less processing time.
+
+
+#### 2. Examples of Test Image
+
+Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here is example image:
+
+![alt text][image4]
+---
+
+### Video Implementation
+
+#### 1. Final Video Output
+
+Here's a [link to my video result](https://youtu.be/4rLj6TLulTY)
+
+
+#### 2. False Positive
+
+I recorded the positions of positive detections in each frame of the video. I use `collections.deque()` data type to record hot windows from previous n frames.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
+
+Here's an example result showing heatmap from a frame of video on the right, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the frame of video which shows on the right:
+
+
+![alt text][image5]
+
+
+
+
+---
+
+### Discussion
+
+For this project, I spend a lot of time on tuning the parameters. From the selection of interesting area select to windows sizes, each different parameter may cause some false positives. False positives have to be solved by tuning the buffer frame size and the threshold. Only when all parameters work good, the result is stable enough. With this approach, it's hard to tune the pipeline to adapt different road or weather conditions and even with larger window size, I got only 0.5 fps on my computer. I also tried this project video with faster R-CNN and Tiny yolo on my computer, which give me 7 fps and 30 fps result, so I think the CNN based solutions are much better and faster to solve this kind of problem.
+
